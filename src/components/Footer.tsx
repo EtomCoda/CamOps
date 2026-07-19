@@ -32,7 +32,7 @@ const navLinks = [
   { label: "Work", href: "#portfolio" },
   { label: "Services", href: "#services" },
   { label: "About", href: "#about" },
-  { label: "Testimonials", href: "#testimonials" },
+  // { label: "Testimonials", href: "#testimonials" },
   { label: "Contact", href: "#contact" },
 ]
 

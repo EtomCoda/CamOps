@@ -38,7 +38,7 @@ export function About() {
               {/* Main image — Active Control Room */}
               <div className="relative overflow-hidden flex-1" style={{ aspectRatio: "3/4" }}>
                 <img
-                  src="/interview.jpg"
+                  src="/Active_Fatherland.jpg"
                   alt="CamOps active control room during a live event"
                   className="w-full h-full object-cover"
                   style={{ objectPosition: "35% center" }}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { useForm, Controller } from "react-hook-form"
+import { useForm, Controller, type SubmitHandler } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
@@ -14,9 +14,18 @@ import { useScrollAnimation } from "@/hooks/use-scroll-animation"
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email address"),
-  company: z.string().min(1, "Company is required"),
+  isCompany: z.boolean().default(false),
+  company: z.string().optional(),
   service: z.string().min(1, "Please select a service"),
   message: z.string().min(10, "Message must be at least 10 characters"),
+}).superRefine((data, ctx) => {
+  if (data.isCompany && (!data.company || data.company.trim() === "")) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "Company name is required",
+      path: ["company"],
+    })
+  }
 })
 
 type FormValues = z.infer<typeof formSchema>
@@ -59,11 +68,15 @@ export function Contact() {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: { name: "", email: "", company: "", service: "", message: "" },
+    defaultValues: { name: "", email: "", isCompany: false, company: "", service: "", message: "" },
   })
+
+  const isCompany = watch("isCompany")
 
   // Load Calendly inline widget script
   useEffect(() => {
@@ -78,7 +91,7 @@ export function Contact() {
     }
   }, [])
 
-  const onSubmit = async (data: FormValues) => {
+  const onSubmit: SubmitHandler<FormValues> = async (data) => {
     setIsSubmitting(true)
     try {
       const formId = import.meta.env.VITE_FORMSPREE_ID
@@ -88,7 +101,7 @@ export function Contact() {
         body: JSON.stringify({
           name: data.name,
           email: data.email,
-          company: data.company,
+          ...(data.isCompany ? { company: data.company } : {}),
           service: data.service,
           message: data.message,
         }),
@@ -157,39 +170,86 @@ export function Contact() {
                 )}
               </div>
 
-              {/* Email + Company row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Email *
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="you@company.com"
-                    aria-invalid={!!errors.email}
-                    className="bg-card border-border focus-visible:border-brand focus-visible:ring-brand/20 text-foreground placeholder:text-muted-foreground/50"
-                    {...register("email")}
-                  />
-                  {errors.email && (
-                    <p className="text-xs text-destructive">{errors.email.message}</p>
-                  )}
-                </div>
+              {/* Email — full width */}
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Email *
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder={isCompany ? "you@company.com" : "your@email.com"}
+                  aria-invalid={!!errors.email}
+                  className="bg-card border-border focus-visible:border-brand focus-visible:ring-brand/20 text-foreground placeholder:text-muted-foreground/50"
+                  {...register("email")}
+                />
+                {errors.email && (
+                  <p className="text-xs text-destructive">{errors.email.message}</p>
+                )}
+              </div>
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="company" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                    Company *
-                  </Label>
-                  <Input
-                    id="company"
-                    placeholder="Your company"
-                    aria-invalid={!!errors.company}
-                    className="bg-card border-border focus-visible:border-brand focus-visible:ring-brand/20 text-foreground placeholder:text-muted-foreground/50"
-                    {...register("company")}
+              {/* Company toggle */}
+              <div>
+                <label
+                  htmlFor="isCompany"
+                  className={`flex items-center gap-3 cursor-pointer select-none group w-fit py-2 transition-all duration-200 ${
+                    isCompany
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {/* Custom checkbox */}
+                  <div
+                    className={`w-4 h-4 shrink-0 border flex items-center justify-center transition-all duration-200 ${
+                      isCompany ? "border-brand bg-brand" : "border-muted-foreground/40 bg-transparent"
+                    }`}
+                  >
+                    {isCompany && (
+                      <svg className="w-2.5 h-2.5 text-background" viewBox="0 0 10 10" fill="none">
+                        <path d="M1.5 5L4 7.5L8.5 2.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </div>
+                  <Controller
+                    name="isCompany"
+                    control={control}
+                    render={({ field }) => (
+                      <input
+                        id="isCompany"
+                        type="checkbox"
+                        className="sr-only"
+                        checked={field.value}
+                        onChange={(e) => {
+                          field.onChange(e)
+                          if (!e.target.checked) {
+                            setValue("company", "")
+                          }
+                        }}
+                      />
+                    )}
                   />
-                  {errors.company && (
-                    <p className="text-xs text-destructive">{errors.company.message}</p>
-                  )}
+                  <span className="text-xs font-semibold uppercase tracking-wider">
+                    Are you a company?
+                  </span>
+                </label>
+
+                {/* Company name field — slides in when checked */}
+                <div
+                  className="overflow-hidden transition-all duration-300 ease-in-out"
+                  style={{ maxHeight: isCompany ? "100px" : "0px", opacity: isCompany ? 1 : 0 }}
+                >
+                  <div className="pt-3 space-y-1.5">
+                    <Input
+                      id="company"
+                      placeholder="Company Name"
+                      aria-invalid={!!errors.company}
+                      className="bg-card border-border focus-visible:border-brand focus-visible:ring-brand/20 text-foreground placeholder:text-muted-foreground/50"
+                      {...register("company")}
+                    />
+                    {errors.company && (
+                      <p className="text-xs text-destructive">{errors.company.message}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -269,7 +329,7 @@ export function Contact() {
             {/* Contact info */}
             <div className="mt-10 pt-8 border-t border-border space-y-3">
               <a
-                href="mailto:hello@camopsstudios.com"
+                href="mailto:camopstudio@gmail.com"
                 className="flex items-center gap-3 text-muted-foreground hover:text-brand transition-colors duration-200 group"
               >
                 <div className="w-8 h-8 border border-border group-hover:border-brand/40 flex items-center justify-center transition-colors">
@@ -278,13 +338,13 @@ export function Contact() {
                 <span className="text-sm font-medium">camopstudio@gmail.com</span>
               </a>
               <a
-                href="tel:+15555550123"
+                href="tel:+2348135596890"
                 className="flex items-center gap-3 text-muted-foreground hover:text-brand transition-colors duration-200 group"
               >
                 <div className="w-8 h-8 border border-border group-hover:border-brand/40 flex items-center justify-center transition-colors">
                   <Phone className="w-4 h-4" />
                 </div>
-                <span className="text-sm font-medium">+1 (555) 555-0123</span>
+                <span className="text-sm font-medium">+234 813 559 6890</span>
               </a>
 
               {/* Social links */}
@@ -323,6 +383,10 @@ export function Contact() {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2 text-center">
+              Prefer to email us directly?{" "}
+              <a href="mailto:camopstudio@gmail.com" className="text-brand hover:underline">
+                Send us an email
+              </a>
             </p>
           </div>
         </div>
