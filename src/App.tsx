@@ -1,4 +1,5 @@
 import { useEffect } from "react"
+import { Analytics } from "@vercel/analytics/react"
 import { Toaster } from "@/components/ui/sonner"
 import { Nav } from "@/components/Nav"
 import { Hero } from "@/components/Hero"
@@ -73,6 +74,7 @@ function App() {
           },
         }}
       />
+      <Analytics />
     </div>
   )
 }
